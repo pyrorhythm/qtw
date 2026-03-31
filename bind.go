@@ -1,0 +1,52 @@
+package qtw
+
+import (
+	qt "github.com/mappu/miqt/qt6"
+	"github.com/pyrorhythm/fn/react"
+)
+
+// Bind subscribes to a Prop and calls setter whenever it changes.
+// Also calls setter immediately with the current value.
+// Returns an unsubscriber function.
+func Bind[T comparable](prop *react.Prop[T], setter func(T)) func() {
+	setter(prop.Get())
+	return prop.OnChange(func(v T) {
+		setter(v)
+	})
+}
+
+// BindText binds a Prop[string] to a QLabel's text.
+func BindText(prop *react.Prop[string], label *qt.QLabel) func() {
+	return Bind(prop, label.SetText)
+}
+
+// BindEnabled binds a Prop[bool] to a QWidget's enabled state.
+func BindEnabled(prop *react.Prop[bool], widget *qt.QWidget) func() {
+	return Bind(prop, widget.SetEnabled)
+}
+
+// BindVisible binds a Prop[bool] to a QWidget's visibility.
+func BindVisible(prop *react.Prop[bool], widget *qt.QWidget) func() {
+	return Bind(prop, widget.SetVisible)
+}
+
+// BindCommand connects a Command to a QPushButton: click→Execute, CanExecute→SetEnabled.
+func BindCommand(cmd *react.Command, btn *qt.QPushButton) {
+	btn.QWidget.SetEnabled(cmd.CanExecute())
+	btn.OnClicked(func() { cmd.Execute() })
+	cmd.OnCanExecuteChanged(func(canExec bool) {
+		btn.QWidget.SetEnabled(canExec)
+	})
+}
+
+// BindList rebuilds a QListWidget whenever the List changes.
+func BindList[T any](list *react.List[T], widget *qt.QListWidget, render func(T) string) {
+	sync := func() {
+		widget.Clear()
+		for _, item := range list.Items() {
+			widget.AddItem(render(item))
+		}
+	}
+	sync()
+	list.OnChange(sync)
+}
